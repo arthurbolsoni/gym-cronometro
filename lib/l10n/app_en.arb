@@ -1,0 +1,37 @@
+{
+  "@@locale": "en",
+  "sets": "Sets",
+  "reset": "Reset",
+  "settings": "Settings",
+  "vibration": "Vibration",
+  "theme": "Theme",
+  "language": "Language",
+  "rest": "Rest",
+  "timeUp": "Time is up! Next set.",
+  "resetSets": "Reset sets",
+  "restTime": "Rest: {time}",
+  "@restTime": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "themeDark": "Dark",
+  "themeLight": "Light",
+  "themeCatppuccin": "Catppuccin",
+  "themeCatppuccinLatte": "Catppuccin Latte",
+  "themeEthereal": "Ethereal",
+  "themeEverforest": "Everforest",
+  "themeFlexokiLight": "Flexoki Light",
+  "themeGruvbox": "Gruvbox",
+  "themeHackerman": "Hackerman",
+  "themeKanagawa": "Kanagawa",
+  "themeMatteBlack": "Matte Black",
+  "themeNord": "Nord",
+  "themeOsakaJade": "Osaka Jade",
+  "themeRistretto": "Ristretto",
+  "themeRosePine": "Rose Pine",
+  "themeSolarizedDark": "Solarized Dark",
+  "themeSolarizedLight": "Solarized Light",
+  "themeTokyoNight": "Tokyo Night",
+  "about": "About"
+}
