@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gym_cronometro/themes/app_themes.dart';
 import 'package:gym_cronometro/themes/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
