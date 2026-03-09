@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gym_cronometro/l10n/app_localizations.dart';
-import 'package:gym_cronometro/main.dart' as app;
-import 'package:gym_cronometro/screens/settings_screen.dart';
-import 'package:gym_cronometro/themes/theme_provider.dart';
+import 'package:gym_timer/l10n/app_localizations.dart';
+import 'package:gym_timer/main.dart' as app;
+import 'package:gym_timer/screens/settings_screen.dart';
+import 'package:gym_timer/themes/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

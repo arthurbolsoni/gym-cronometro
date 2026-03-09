@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:gym_cronometro/themes/app_themes.dart';
+import 'package:gym_timer/themes/app_themes.dart';
 
 void main() {
   group('appThemes map', () {
