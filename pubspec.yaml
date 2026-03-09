@@ -1,4 +1,4 @@
-name: gym_cronometro
+name: gym_timer
 description: "Gym rest timer with sets counter."
 publish_to: 'none'
 version: 1.0.0+1
