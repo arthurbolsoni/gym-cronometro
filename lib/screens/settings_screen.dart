@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:gym_cronometro/l10n/app_localizations.dart';
-import 'package:gym_cronometro/main.dart';
-import 'package:gym_cronometro/themes/app_themes.dart';
+import 'package:gym_timer/l10n/app_localizations.dart';
+import 'package:gym_timer/main.dart';
+import 'package:gym_timer/themes/app_themes.dart';
 
 class SettingsScreen extends StatelessWidget {
   final VoidCallback onResetSets;

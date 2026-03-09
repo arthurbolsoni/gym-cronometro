@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:vibration/vibration.dart';
-import 'package:gym_cronometro/l10n/app_localizations.dart';
-import 'package:gym_cronometro/main.dart';
-import 'package:gym_cronometro/screens/settings_screen.dart';
-import 'package:gym_cronometro/services/notification_service.dart';
-import 'package:gym_cronometro/widgets/time_button.dart';
-import 'package:gym_cronometro/widgets/timer_display.dart';
+import 'package:gym_timer/l10n/app_localizations.dart';
+import 'package:gym_timer/main.dart';
+import 'package:gym_timer/screens/settings_screen.dart';
+import 'package:gym_timer/services/notification_service.dart';
+import 'package:gym_timer/widgets/time_button.dart';
+import 'package:gym_timer/widgets/timer_display.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

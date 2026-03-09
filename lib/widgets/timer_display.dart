@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gym_cronometro/themes/app_themes.dart';
+import 'package:gym_timer/themes/app_themes.dart';
 
 class TimerDisplay extends StatelessWidget {
   final int remainingSeconds;

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gym_cronometro/l10n/app_localizations.dart';
-import 'package:gym_cronometro/screens/home_screen.dart';
-import 'package:gym_cronometro/services/notification_service.dart';
-import 'package:gym_cronometro/themes/theme_provider.dart';
+import 'package:gym_timer/l10n/app_localizations.dart';
+import 'package:gym_timer/screens/home_screen.dart';
+import 'package:gym_timer/services/notification_service.dart';
+import 'package:gym_timer/themes/theme_provider.dart';
 
 ThemeProvider themeProvider = ThemeProvider();
 
