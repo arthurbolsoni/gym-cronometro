@@ -142,6 +142,18 @@ abstract class AppLocalizations {
   /// **'Rest'**
   String get rest;
 
+  /// No description provided for @nextSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Next set'**
+  String get nextSet;
+
+  /// No description provided for @idleReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'5 minutes without a set. Back to training!'**
+  String get idleReminder;
+
   /// No description provided for @timeUp.
   ///
   /// In en, this message translates to:

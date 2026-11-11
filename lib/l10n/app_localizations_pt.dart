@@ -30,6 +30,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get rest => 'Descanso';
 
   @override
+  String get nextSet => 'Próxima série';
+
+  @override
+  String get idleReminder => '5 minutos sem série. Volte ao treino!';
+
+  @override
   String get timeUp => 'Tempo acabou! Próxima série.';
 
   @override

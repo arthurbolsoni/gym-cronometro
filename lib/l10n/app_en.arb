@@ -7,6 +7,8 @@
   "theme": "Theme",
   "language": "Language",
   "rest": "Rest",
+  "nextSet": "Next set",
+  "idleReminder": "5 minutes without a set. Back to training!",
   "timeUp": "Time is up! Next set.",
   "resetSets": "Reset sets",
   "restTime": "Rest: {time}",

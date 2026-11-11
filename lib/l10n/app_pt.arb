@@ -7,6 +7,8 @@
   "theme": "Tema",
   "language": "Idioma",
   "rest": "Descanso",
+  "nextSet": "Próxima série",
+  "idleReminder": "5 minutos sem série. Volte ao treino!",
   "timeUp": "Tempo acabou! Próxima série.",
   "resetSets": "Resetar séries",
   "restTime": "Descanso: {time}",

@@ -27,12 +27,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Wall-clock moment the rest ends. The countdown is always derived from
   /// it, so it stays right after Android suspends the app in the background.
   DateTime? _endTime;
+  Duration _total = Duration.zero;
   bool _inBackground = false;
   late final AppLifecycleListener _lifecycleListener;
 
   static const _presetSeconds = [30, 45, 60, 90, 120, 150, 180];
   static const _endTimeKey = 'timer_end_ms';
   static const _setsKey = 'timer_sets';
+  static const _totalKey = 'timer_total_s';
+
+  /// Counted from the start of the last rest.
+  static const _idleReminderAfter = Duration(minutes: 5);
 
   @override
   void initState() {
@@ -41,15 +46,21 @@ class _HomeScreenState extends State<HomeScreen> {
       onHide: _onBackground,
       onShow: _onForeground,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    NotificationService.instance.onNextSet = _nextSet;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _requestPermissions();
-      _restoreTimer();
+      await _restoreTimer();
+      if (NotificationService.instance.launchedByNextSet) {
+        NotificationService.instance.launchedByNextSet = false;
+        _nextSet();
+      }
     });
   }
 
   @override
   void dispose() {
     _lifecycleListener.dispose();
+    NotificationService.instance.onNextSet = null;
     _timer?.cancel();
     NotificationService.instance.cancel();
     super.dispose();
@@ -62,7 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _secondsLeft() {
     final end = _endTime;
-    if (end == null) return 0;
+    return end == null ? 0 : _secondsUntil(end);
+  }
+
+  int _secondsUntil(DateTime end) {
     final ms = end.difference(clock.now()).inMilliseconds;
     return ms <= 0 ? 0 : (ms / 1000).ceil();
   }
@@ -70,9 +84,32 @@ class _HomeScreenState extends State<HomeScreen> {
   void _startTimer(int seconds) {
     final end = clock.now().add(Duration(seconds: seconds));
     setState(() => _sets++);
+    _total = Duration(seconds: seconds);
     _saveTimer(end);
     _runUntil(end);
     _showOngoingNotification();
+    if (_inBackground) _scheduleBackgroundAlert();
+    _scheduleIdleReminder();
+  }
+
+  /// Nudge for when the rest is long over and no new set was started.
+  void _scheduleIdleReminder() {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null) return;
+
+    NotificationService.instance.scheduleReminder(
+      title: l10n.idleReminder,
+      body: '${l10n.sets}: $_sets',
+      actionLabel: l10n.nextSet,
+      at: clock.now().add(_idleReminderAfter),
+      vibrate: themeProvider.vibrationEnabled,
+    );
+  }
+
+  /// "Next set" on the notification: another rest of the same length.
+  void _nextSet() {
+    if (!mounted || _total <= Duration.zero) return;
+    _startTimer(_total.inSeconds);
   }
 
   void _runUntil(DateTime end) {
@@ -114,6 +151,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onBackground() {
     _inBackground = true;
+    _scheduleBackgroundAlert();
+  }
+
+  /// Replaces whatever alert was pending with one for the current rest.
+  void _scheduleBackgroundAlert() {
     final end = _endTime;
     final l10n = AppLocalizations.of(context);
     if (!_isRunning || end == null || l10n == null) return;
@@ -121,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
     NotificationService.instance.scheduleAlert(
       title: l10n.timeUp,
       body: '${l10n.sets}: $_sets',
+      actionLabel: l10n.nextSet,
       at: end,
       vibrate: themeProvider.vibrationEnabled,
     );
@@ -135,7 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showOngoingNotification() {
     final l10n = AppLocalizations.of(context);
-    if (l10n == null || !_isRunning) return;
+    final end = _endTime;
+    if (l10n == null || !_isRunning || end == null) return;
 
     final m = _remainingSeconds ~/ 60;
     final s = _remainingSeconds % 60;
@@ -145,6 +189,10 @@ class _HomeScreenState extends State<HomeScreen> {
     NotificationService.instance.showOngoingTimer(
       title: l10n.restTime(timeStr),
       body: '${l10n.sets}: $_sets',
+      label: l10n.rest,
+      actionLabel: l10n.nextSet,
+      endTime: end,
+      total: _total,
     );
   }
 
@@ -153,8 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (l10n == null) return;
 
     await NotificationService.instance.showAlertNotification(
-      l10n.timeUp,
-      '${l10n.sets}: $_sets',
+      title: l10n.timeUp,
+      body: '${l10n.sets}: $_sets',
+      actionLabel: l10n.nextSet,
     );
 
     if (themeProvider.vibrationEnabled) {
@@ -186,18 +235,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_endTimeKey, end.millisecondsSinceEpoch);
     await prefs.setInt(_setsKey, _sets);
+    await prefs.setInt(_totalKey, _total.inSeconds);
   }
 
   Future<void> _clearSavedTimer() async {
     final prefs = await SharedPreferences.getInstance();
+    // Sets and length stay: "next set" needs them if the process was killed.
     await prefs.remove(_endTimeKey);
-    await prefs.remove(_setsKey);
   }
 
   /// Picks a running rest back up when Android killed the process meanwhile.
   Future<void> _restoreTimer() async {
     final prefs = await SharedPreferences.getInstance();
     final endMs = prefs.getInt(_endTimeKey);
+    if (NotificationService.instance.launchedByNextSet && !_isRunning) {
+      final total = prefs.getInt(_totalKey);
+      if (total != null && mounted) {
+        _total = Duration(seconds: total);
+        setState(() => _sets = prefs.getInt(_setsKey) ?? _sets);
+      }
+    }
     if (endMs == null) return;
 
     final end = DateTime.fromMillisecondsSinceEpoch(endMs);
@@ -208,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     setState(() => _sets = prefs.getInt(_setsKey) ?? _sets);
+    _total = Duration(seconds: prefs.getInt(_totalKey) ?? _secondsUntil(end));
     _runUntil(end);
     _showOngoingNotification();
   }

@@ -30,6 +30,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rest => 'Rest';
 
   @override
+  String get nextSet => 'Next set';
+
+  @override
+  String get idleReminder => '5 minutes without a set. Back to training!';
+
+  @override
   String get timeUp => 'Time is up! Next set.';
 
   @override
