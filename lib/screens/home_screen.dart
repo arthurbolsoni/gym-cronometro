@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart';
 import 'package:gym_timer/l10n/app_localizations.dart';
 import 'package:gym_timer/main.dart';
 import 'package:gym_timer/screens/settings_screen.dart';
+import 'package:gym_timer/services/battery_service.dart';
 import 'package:gym_timer/services/notification_service.dart';
 import 'package:gym_timer/widgets/time_button.dart';
 import 'package:gym_timer/widgets/timer_display.dart';
@@ -21,54 +24,127 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timer;
   bool _isRunning = false;
 
+  /// Wall-clock moment the rest ends. The countdown is always derived from
+  /// it, so it stays right after Android suspends the app in the background.
+  DateTime? _endTime;
+  bool _inBackground = false;
+  late final AppLifecycleListener _lifecycleListener;
+
   static const _presetSeconds = [30, 45, 60, 90, 120, 150, 180];
+  static const _endTimeKey = 'timer_end_ms';
+  static const _setsKey = 'timer_sets';
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onHide: _onBackground,
+      onShow: _onForeground,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestPermissions();
+      _restoreTimer();
+    });
+  }
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     _timer?.cancel();
     NotificationService.instance.cancel();
     super.dispose();
   }
 
-  void _startTimer(int seconds) {
-    _timer?.cancel();
-
-    setState(() {
-      _remainingSeconds = seconds;
-      _isRunning = true;
-      _sets++;
-    });
-
-    _updateNotification();
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        _remainingSeconds--;
-      });
-
-      if (_remainingSeconds <= 0) {
-        timer.cancel();
-        setState(() {
-          _isRunning = false;
-        });
-        _onTimerFinished();
-      } else {
-        _updateNotification();
-      }
-    });
+  Future<void> _requestPermissions() async {
+    await NotificationService.instance.requestPermission();
+    await BatteryService.instance.requestExemptionOnce();
   }
 
-  void _updateNotification() {
+  int _secondsLeft() {
+    final end = _endTime;
+    if (end == null) return 0;
+    final ms = end.difference(clock.now()).inMilliseconds;
+    return ms <= 0 ? 0 : (ms / 1000).ceil();
+  }
+
+  void _startTimer(int seconds) {
+    final end = clock.now().add(Duration(seconds: seconds));
+    setState(() => _sets++);
+    _saveTimer(end);
+    _runUntil(end);
+    _showOngoingNotification();
+  }
+
+  void _runUntil(DateTime end) {
+    _timer?.cancel();
+    _endTime = end;
+
+    setState(() {
+      _remainingSeconds = _secondsLeft();
+      _isRunning = true;
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  void _tick() {
+    if (!_isRunning) return;
+    final left = _secondsLeft();
+
+    if (left > 0) {
+      if (left != _remainingSeconds) {
+        setState(() => _remainingSeconds = left);
+        _showOngoingNotification();
+      }
+      return;
+    }
+
+    _timer?.cancel();
+    NotificationService.instance.cancelOngoing();
+    _endTime = null;
+    _clearSavedTimer();
+    setState(() {
+      _remainingSeconds = 0;
+      _isRunning = false;
+    });
+
+    // In the background the alert scheduled in _onBackground does the job.
+    if (!_inBackground) _onTimerFinished();
+  }
+
+  void _onBackground() {
+    _inBackground = true;
+    final end = _endTime;
     final l10n = AppLocalizations.of(context);
-    if (l10n == null) return;
+    if (!_isRunning || end == null || l10n == null) return;
+
+    NotificationService.instance.scheduleAlert(
+      title: l10n.timeUp,
+      body: '${l10n.sets}: $_sets',
+      at: end,
+      vibrate: themeProvider.vibrationEnabled,
+    );
+  }
+
+  void _onForeground() {
+    _inBackground = false;
+    // Drops the alert whether it is still pending or already fired.
+    NotificationService.instance.cancelAlert();
+    _tick();
+  }
+
+  void _showOngoingNotification() {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null || !_isRunning) return;
 
     final m = _remainingSeconds ~/ 60;
     final s = _remainingSeconds % 60;
-    final timeStr = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    final timeStr =
+        '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
 
     NotificationService.instance.showOngoingTimer(
-      l10n.restTime(timeStr),
-      '${l10n.sets}: $_sets',
+      title: l10n.restTime(timeStr),
+      body: '${l10n.sets}: $_sets',
     );
   }
 
@@ -91,6 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _resetTimer() {
     _timer?.cancel();
+    _endTime = null;
+    _clearSavedTimer();
     NotificationService.instance.cancel();
     setState(() {
       _remainingSeconds = 0;
@@ -103,6 +181,37 @@ class _HomeScreenState extends State<HomeScreen> {
       _sets = 0;
     });
   }
+
+  Future<void> _saveTimer(DateTime end) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_endTimeKey, end.millisecondsSinceEpoch);
+    await prefs.setInt(_setsKey, _sets);
+  }
+
+  Future<void> _clearSavedTimer() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_endTimeKey);
+    await prefs.remove(_setsKey);
+  }
+
+  /// Picks a running rest back up when Android killed the process meanwhile.
+  Future<void> _restoreTimer() async {
+    final prefs = await SharedPreferences.getInstance();
+    final endMs = prefs.getInt(_endTimeKey);
+    if (endMs == null) return;
+
+    final end = DateTime.fromMillisecondsSinceEpoch(endMs);
+    if (!mounted || _isRunning) return;
+    if (!end.isAfter(clock.now())) {
+      await _clearSavedTimer();
+      return;
+    }
+
+    setState(() => _sets = prefs.getInt(_setsKey) ?? _sets);
+    _runUntil(end);
+    _showOngoingNotification();
+  }
+
 
   @override
   Widget build(BuildContext context) {

@@ -3,7 +3,6 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -24,10 +23,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
         applicationId = "com.ambrosioking.gymtimer"
         minSdk = flutter.minSdkVersion
@@ -36,19 +31,36 @@ android {
         versionName = flutter.versionName
     }
 
+    val hasReleaseKeystore = keystorePropertiesFile.exists()
+
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
+        debug {
+            // Installs next to the Play Store build instead of replacing it.
+            applicationIdSuffix = ".debug"
         }
+        release {
+            // Without key.properties the release build falls back to the debug key.
+            signingConfig = signingConfigs.getByName(
+                if (hasReleaseKeystore) "release" else "debug"
+            )
+        }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
     }
 }
 
